@@ -1,3 +1,13 @@
+---
+title: Vertex AI RAG Chatbot
+emoji: 🤖
+colorFrom: blue
+colorTo: green
+sdk: docker
+app_file: app.py
+pinned: false
+---
+
 # Vertex AI Docs RAG Chatbot
 
 A RAG (Retrieval-Augmented Generation) chatbot that answers questions about
