@@ -11,13 +11,16 @@ Deploy to HuggingFace Spaces:
 """
 
 import os
+import sys
 import subprocess
 import streamlit as st
 from rag_chain import load_retriever, build_chain, ask
 
 if not os.path.exists("./chroma_db"):
-    import subprocess
-    result = subprocess.run(["python3", "ingest.py"], capture_output=True, text=True)
+    # Debug: show installed packages
+    debug = subprocess.run([sys.executable, "-m", "pip", "list"], capture_output=True, text=True)
+    st.text(debug.stdout)
+    st.stop()
     if result.returncode != 0:
         st.error(f"Ingestion failed:\n{result.stderr}")
         st.stop()
