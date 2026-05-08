@@ -2,8 +2,13 @@ streamlit>=1.32.0
 langchain>=0.1.0
 langchain-community>=0.0.20
 langchain-groq>=0.1.0
-chromadb>=0.4.22
+langchain-huggingface>=0.0.1
+langchain-core>=0.1.0
+langchain-text-splitters>=0.0.1
+chromadb==0.4.24
 sentence-transformers>=2.6.0
 beautifulsoup4>=4.12.0
 requests>=2.31.0
-langchain-text-splitters>=0.0.1
+protobuf==3.20.3
+opentelemetry-api==1.20.0
+opentelemetry-sdk==1.20.0
