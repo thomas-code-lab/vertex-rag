@@ -17,12 +17,9 @@ import streamlit as st
 from rag_chain import load_retriever, build_chain, ask
 
 if not os.path.exists("./chroma_db"):
-    # Debug: show installed packages
-    debug = subprocess.run([sys.executable, "-m", "pip", "list"], capture_output=True, text=True)
-    st.text(debug.stdout)
-    st.stop()
+    result = subprocess.run([sys.executable, "ingest.py"], capture_output=True, text=True)
     if result.returncode != 0:
-        st.error(f"Ingestion failed:\n{result.stderr}")
+        st.error(f"Ingestion failed:\n{result.stdout}\n{result.stderr}")
         st.stop()
 
 # ── Page config ───────────────────────────────────────────────────────────────
