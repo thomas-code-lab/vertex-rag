@@ -13,6 +13,11 @@ Deploy to HuggingFace Spaces:
 import streamlit as st
 from rag_chain import load_retriever, build_chain, ask
 
+import os
+if not os.path.exists("./chroma_db"):
+    import subprocess
+    subprocess.run(["python", "ingest.py"], check=True)
+
 # ── Page config ───────────────────────────────────────────────────────────────
 st.set_page_config(
     page_title="Vertex AI Docs Assistant",
