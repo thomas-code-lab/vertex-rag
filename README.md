@@ -1,60 +1,78 @@
+# 🤖 Vertex AI Docs Assistant
+
+A RAG (Retrieval-Augmented Generation) chatbot that answers questions about Google Cloud Vertex AI, grounded in the official documentation. Built as a personal project to demonstrate applied LLM engineering.
+
+🚀 **Live Demo:** https://vertex-rag.streamlit.app  
+📁 **GitHub:** https://github.com/thomas-code-lab/vertex-rag
+
 ---
-title: Vertex AI RAG Chatbot
-emoji: 🤖
-colorFrom: blue
-colorTo: green
-sdk: docker
-app_file: app.py
-pinned: false
+
+## What it does
+
+Ask natural language questions about Vertex AI and get accurate, sourced answers — pulled directly from the official GCP documentation. Every answer includes citations to the exact doc pages used, so you can verify the response yourself.
+
+Example questions:
+- *"What is Vertex AI and what problems does it solve?"*
+- *"What's the difference between online and batch prediction?"*
+- *"How does grounding work in Vertex AI generative models?"*
+- *"What models are available in the Vertex AI Model Garden?"*
+
 ---
-
-# Vertex AI Docs RAG Chatbot
-
-A RAG (Retrieval-Augmented Generation) chatbot that answers questions about
-Google Cloud Vertex AI — grounded in the official documentation.
-
-Built as a personal project to demonstrate applied LLM engineering skills.
 
 ## Architecture
 
 ```
-User question
-     │
-     ▼
-Streamlit UI (app.py)
-     │
-     ▼
-RAG Chain (rag_chain.py)
-     ├── ChromaDB  ← top-6 relevant chunks retrieved by vector similarity
-     └── Groq API  ← Llama 3 generates answer from retrieved context
+Phase 1 — Ingestion (runs once at startup)
+GCP Docs pages → BeautifulSoup (clean HTML) → RecursiveCharacterTextSplitter
+→ sentence-transformers (embed) → ChromaDB (store vectors on disk)
+
+Phase 2 — Query (every question)
+User question → sentence-transformers (embed) → ChromaDB MMR retrieval (top-6 chunks)
+→ Groq / Llama 3 (generate answer) → Streamlit (display answer + source URLs)
 ```
 
-**Ingestion pipeline (runs once):**
-GCP Docs pages → text extraction → recursive chunking (500 tokens, 50 overlap)
-→ sentence-transformers embeddings → ChromaDB vector store
+### Key design decisions
 
-**Query pipeline (every question):**
-Question → embed → ChromaDB MMR retrieval → Groq Llama 3 → answer + source URLs
+**Why RAG instead of fine-tuning?**  
+Vertex AI docs are updated frequently. RAG lets us re-ingest updated pages in seconds. Fine-tuning would require retraining for every doc update and still wouldn't guarantee factual accuracy.
+
+**Why MMR retrieval?**  
+Maximal Marginal Relevance adds diversity to retrieved chunks — it avoids returning 6 near-identical chunks and ensures broader coverage of the answer space.
+
+**Why sentence-transformers locally instead of an API embedder?**  
+Keeps the project fully free with no API calls for embeddings. The `all-MiniLM-L6-v2` model (~90MB) is fast on CPU and accurate enough for technical documentation retrieval.
+
+**Hallucination mitigation:**  
+- System prompt: *"Answer ONLY from context, say I don't know otherwise"*
+- Source citations shown for every answer so users can verify
+- top-k=6 with MMR for diverse, relevant context
+- Low LLM temperature (0.1) for factual, deterministic responses
+
+---
 
 ## Tech Stack
 
-| Component | Tool |
-|---|---|
-| UI | Streamlit |
-| Orchestration | LangChain |
-| Embeddings | sentence-transformers (all-MiniLM-L6-v2) |
-| Vector store | ChromaDB |
-| LLM | Groq API (Llama 3 8B) |
-| Deployment | HuggingFace Spaces |
+| Component | Tool | Why |
+|---|---|---|
+| UI | Streamlit | Fast to build, easy to deploy |
+| Orchestration | LangChain | Chains retrieval + generation |
+| Embeddings | sentence-transformers (all-MiniLM-L6-v2) | Free, runs locally, no API needed |
+| Vector store | ChromaDB | Simple, file-based, no server needed |
+| LLM | Groq API (Llama 3) | Free tier, fast inference |
+| Deployment | Streamlit Community Cloud | Free, native Streamlit support |
 
-**Cost: $0** — all components are free, no credit card required.
+**Total cost: $0** — fully free stack.
+
+---
 
 ## Local Setup
 
 **1. Clone and install**
 ```bash
-git clone <your-repo>
+git clone https://github.com/thomas-code-lab/vertex-rag
 cd vertex-rag
+python3 -m venv venv
+source venv/bin/activate
 pip install -r requirements.txt
 ```
 
@@ -66,13 +84,12 @@ Sign up at https://console.groq.com — no credit card needed.
 export GROQ_API_KEY=your_key_here
 ```
 
-**3. Ingest the Vertex AI docs (run once)**
+**3. Ingest the Vertex AI docs (runs automatically on first start)**
 ```bash
 python ingest.py
 ```
-This fetches ~15 Vertex AI documentation pages, chunks them, embeds them,
-and saves everything to `./chroma_db/`. Takes ~2 minutes on first run
-(downloads the embedding model). Subsequent runs are faster.
+
+Fetches ~14 Vertex AI documentation pages, chunks them into 391 pieces, embeds with sentence-transformers, and saves to ChromaDB. Takes ~2 minutes on first run.
 
 **4. Start the app**
 ```bash
@@ -81,50 +98,38 @@ streamlit run app.py
 
 Open http://localhost:8501
 
-## Deploy to HuggingFace Spaces
+---
 
-1. Create a new Space at https://huggingface.co/spaces
-   - SDK: Streamlit
-   - Visibility: Public
+## Indexed Vertex AI Topics
 
-2. Add your secret:
-   - Go to Settings → Variables and secrets
-   - Add `GROQ_API_KEY` as a secret
+- Vertex AI overview & platform concepts
+- Generative AI & Gemini models
+- Text embeddings
+- Grounding & RAG on Vertex AI
+- Model training
+- Online & batch prediction
+- Model Garden
+- Vertex AI Pipelines
+- Feature Store
+- Prompt engineering
 
-3. Push the code:
-```bash
-git remote add space https://huggingface.co/spaces/YOUR_USERNAME/YOUR_SPACE_NAME
-git push space main
-```
+---
 
-**Note:** Run `ingest.py` locally first and commit the `chroma_db/` folder,
-or add an ingestion step to the Space startup.
+## RAG Pipeline Details
 
-## Design Decisions
+### Chunking strategy
+Documents are split using `RecursiveCharacterTextSplitter` with:
+- Chunk size: 500 tokens
+- Overlap: 50 tokens (prevents information loss at boundaries)
+- Split order: paragraphs → sentences → words (preserves semantic units)
 
-**Why RAG instead of fine-tuning?**
-Vertex AI docs are updated frequently. RAG lets us re-ingest updated pages
-in seconds. Fine-tuning would require retraining for every doc update.
+### Retrieval
+- Embedding model: `all-MiniLM-L6-v2` (384-dimensional vectors)
+- Search type: MMR (Maximal Marginal Relevance)
+- top-k: 6 chunks retrieved per query
+- fetch-k: 20 candidates before MMR re-ranking
 
-**Why MMR retrieval?**
-Maximal Marginal Relevance adds diversity to retrieved chunks — it avoids
-returning 6 near-identical chunks and ensures broader coverage of the answer.
-
-**Why sentence-transformers locally instead of an API embedder?**
-Keeps the project fully free with no API calls for embeddings. The
-all-MiniLM-L6-v2 model (~90MB) is fast on CPU and accurate enough for
-technical documentation retrieval.
-
-**Hallucination mitigation:**
-- System prompt: "Answer ONLY from context, say I don't know otherwise"
-- Source citations shown for every answer
-- top-k=6 with MMR for diverse, relevant context
-- Low LLM temperature (0.1) for factual responses
-
-## Example Questions
-
-- What is Vertex AI and what problems does it solve?
-- How do I deploy a model to a Vertex AI endpoint?
-- What's the difference between online and batch prediction?
-- How does grounding work in Vertex AI generative models?
-- What models are available in the Vertex AI Model Garden?
+### Generation
+- Model: Llama 3 via Groq API
+- Temperature: 0.1 (factual, low randomness)
+- System prompt enforces context-only answers with "I don't know" fallback
