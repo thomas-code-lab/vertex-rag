@@ -10,6 +10,8 @@ Deploy to HuggingFace Spaces:
   - Add GROQ_API_KEY as a Space secret
 """
 
+import os
+import subprocess
 import streamlit as st
 from rag_chain import load_retriever, build_chain, ask
 
