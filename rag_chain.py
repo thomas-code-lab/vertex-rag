@@ -110,7 +110,7 @@ def ask(question: str, llm, prompt, retriever) -> dict:
     start = time.time()
 
     # Step 1: Retrieve relevant chunks
-    docs = retriever.get_relevant_documents(question)
+    docs = retriever.invoke(question)
 
     if not docs:
         return {
