@@ -13,10 +13,12 @@ Deploy to HuggingFace Spaces:
 import streamlit as st
 from rag_chain import load_retriever, build_chain, ask
 
-import os
 if not os.path.exists("./chroma_db"):
     import subprocess
-    subprocess.run(["python", "ingest.py"], check=True)
+    result = subprocess.run(["python3", "ingest.py"], capture_output=True, text=True)
+    if result.returncode != 0:
+        st.error(f"Ingestion failed:\n{result.stderr}")
+        st.stop()
 
 # ── Page config ───────────────────────────────────────────────────────────────
 st.set_page_config(
